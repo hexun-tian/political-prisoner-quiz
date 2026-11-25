@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 110 96" width="110" height="96" fill="none" aria-hidden="true">
+  <!-- 復古報刊飾圖：正義天平與線條飾紋（透明背景版畫） -->
+  <!-- 中柱與底座 -->
+  <path d="M55 16 V78 M37 78 H73 M43 78 C43 72 67 72 67 78" stroke="#1a1916" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="55" cy="16" r="3" fill="#8e1e1a"/>
+  <!-- 橫樑 -->
+  <path d="M22 28 C34 24 44 26 55 26 C66 26 76 24 88 28" stroke="#1a1916" stroke-width="2" stroke-linecap="round"/>
+  <!-- 左秤盤 -->
+  <path d="M24 28 L15 54 M24 28 L33 54" stroke="#4a463d" stroke-width="1.3"/>
+  <path d="M13 54 H35 C34 61 14 61 13 54 Z" fill="#1a1916" fill-opacity="0.08" stroke="#1a1916" stroke-width="1.7" stroke-linejoin="round"/>
+  <!-- 右秤盤 -->
+  <path d="M86 28 L77 54 M86 28 L95 54" stroke="#4a463d" stroke-width="1.3"/>
+  <path d="M75 54 H97 C96 61 76 61 75 54 Z" fill="#1a1916" fill-opacity="0.08" stroke="#1a1916" stroke-width="1.7" stroke-linejoin="round"/>
+  <!-- 飾邊橫線 -->
+  <path d="M18 84 H92" stroke="#1a1916" stroke-width="1.2" stroke-dasharray="2 3"/>
+</svg>

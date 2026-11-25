@@ -1,0 +1,6 @@
+{
+  "name": "假如我是政治犯",
+  "description": "以臺灣戒嚴時期政治案件與李武忠案為教育主題之繁體中文互動情境模擬遊戲。",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": []
+}

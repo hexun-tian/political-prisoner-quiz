@@ -1,0 +1,76 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 全域預設拒絕兜底規則
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    // 高熵不可猜測的分享權杖 ID（至少 24 字元，僅限英數字與底線／連字號）
+    function isValidShareToken(shareToken) {
+      return shareToken is string
+        && shareToken.size() >= 24
+        && shareToken.size() <= 64
+        && shareToken.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidIdentityId(identityId) {
+      return identityId is string
+        && identityId in [
+          'study_group',
+          'speech_investigation',
+          'implicated_associate',
+          'print_dissemination',
+          'acquitted'
+        ];
+    }
+
+    function isValidPhotoPreset(preset) {
+      return preset is string
+        && preset in [
+          'none',
+          'classic_bw',
+          'aged_sepia_bw',
+          'high_grain_archive'
+        ];
+    }
+
+    function isValidCaseShare(data) {
+      return data.keys().hasAll(['caseNumber', 'identityId', 'createdAt', 'expiresAtMs'])
+        && data.keys().hasOnly(['caseNumber', 'identityId', 'photoDataUrl', 'photoPreset', 'createdAt', 'expiresAtMs'])
+        && data.caseNumber is string
+        && data.caseNumber.size() >= 6
+        && data.caseNumber.size() <= 24
+        && data.caseNumber.matches('^PF-1970-[0-9A-Z]{2,8}$')
+        && isValidIdentityId(data.identityId)
+        && (!('photoDataUrl' in data) || (
+          data.photoDataUrl is string
+          && data.photoDataUrl.size() > 0
+          && data.photoDataUrl.size() <= 320000
+          && data.photoDataUrl.matches('^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$')
+        ))
+        && (!('photoPreset' in data) || isValidPhotoPreset(data.photoPreset))
+        && data.createdAt == request.time
+        && data.expiresAtMs is int
+        && data.expiresAtMs > request.time.toMillis()
+        && data.expiresAtMs <= request.time.toMillis() + 86460000;
+    }
+
+    // 24 小時跨裝置 QR Code 下載暫存文件：
+    // - 禁止公開列舉（allow list: if false）
+    // - 僅限憑正確隨機權杖於 24 小時效期內讀取單筆（allow get）
+    // - 寫入後不可竄改或刪除（immutable snapshot）
+    match /caseShares/{shareToken} {
+      allow get: if isValidShareToken(shareToken)
+        && resource.data.expiresAtMs > request.time.toMillis();
+      allow list: if false;
+      allow create: if isValidShareToken(shareToken)
+        && isValidCaseShare(incoming());
+      allow update, delete: if false;
+    }
+  }
+}

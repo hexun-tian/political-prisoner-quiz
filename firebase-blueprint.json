@@ -1,0 +1,67 @@
+{
+  "entities": {
+    "CaseShare": {
+      "title": "CaseShare",
+      "description": "Temporary 24-hour unguessable snapshot of a visitor's simulated case file for cross-device QR Code download.",
+      "type": "object",
+      "properties": {
+        "caseNumber": {
+          "type": "string",
+          "description": "Unique simulation case file number (e.g. PF-1970-482).",
+          "minLength": 6,
+          "maxLength": 24,
+          "pattern": "^PF-1970-[0-9A-Z]{2,8}$"
+        },
+        "identityId": {
+          "type": "string",
+          "description": "Matched simulated political case identity identifier.",
+          "enum": [
+            "study_group",
+            "speech_investigation",
+            "implicated_associate",
+            "print_dissemination",
+            "acquitted"
+          ]
+        },
+        "photoDataUrl": {
+          "type": "string",
+          "description": "Optional compressed 3:4 portrait DataURL (JPEG/PNG/WebP, max 320KB) for reconstructing the dossier PNG.",
+          "maxLength": 320000
+        },
+        "photoPreset": {
+          "type": "string",
+          "description": "Optional archival photo filter preset used on the portrait.",
+          "enum": [
+            "none",
+            "classic_bw",
+            "aged_sepia_bw",
+            "high_grain_archive"
+          ]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the temporary share record was created."
+        },
+        "expiresAtMs": {
+          "type": "integer",
+          "description": "Unix epoch timestamp in milliseconds after which the share link expires (24 hours after creation)."
+        }
+      },
+      "required": [
+        "caseNumber",
+        "identityId",
+        "createdAt",
+        "expiresAtMs"
+      ]
+    }
+  },
+  "firestore": {
+    "/caseShares/{shareToken}": {
+      "schema": {
+        "$ref": "#/entities/CaseShare"
+      },
+      "description": "Temporary 24-hour case file share snapshots indexed by cryptographically random unguessable share tokens (no public listing allowed)."
+    }
+  }
+}

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 110 96" width="110" height="96" fill="none" aria-hidden="true">
+  <!-- 復古報刊飾圖：路邊攤碗筷與熱氣微光（透明背景版畫） -->
+  <!-- 熱氣曲線 -->
+  <path d="M40 36 C36 29 44 24 40 16 M55 34 C51 26 59 21 55 13 M70 36 C66 29 74 24 70 16" stroke="#8e1e1a" stroke-width="1.4" stroke-linecap="round" opacity="0.8"/>
+  <!-- 陶碗與紋飾 -->
+  <path d="M22 46 H88 C86 67 74 78 55 78 C36 78 24 67 22 46 Z" fill="#1a1916" fill-opacity="0.06" stroke="#1a1916" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M41 78 L39 84 H71 L69 78" stroke="#1a1916" stroke-width="1.8" stroke-linejoin="round"/>
+  <!-- 碗緣陰影刻線 -->
+  <path d="M27 53 H83 M34 62 C44 65 66 65 76 62" stroke="#4a463d" stroke-width="1.1"/>
+  <!-- 筷子斜置 -->
+  <path d="M62 48 L96 29 M67 51 L99 35" stroke="#1a1916" stroke-width="1.8" stroke-linecap="round"/>
+  <!-- 桌面細線 -->
+  <path d="M16 86 H94" stroke="#1a1916" stroke-width="1.2" stroke-dasharray="3 3"/>
+</svg>

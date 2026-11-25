@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 110 96" width="110" height="96" fill="none" aria-hidden="true">
+  <!-- 復古報刊飾圖：攤開舊譯本與圓框眼鏡（透明背景版畫） -->
+  <!-- 左頁與右頁 -->
+  <path d="M14 26 C26 23 42 25 55 32 V76 C42 70 26 68 14 71 Z" fill="#1a1916" fill-opacity="0.06" stroke="#1a1916" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M96 26 C84 23 68 25 55 32 V76 C68 70 84 68 96 71 Z" stroke="#1a1916" stroke-width="2" stroke-linejoin="round"/>
+  <!-- 書背線與書籤絲帶 -->
+  <path d="M10 73 L55 81 L100 73" stroke="#1a1916" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M55 76 V88 L59 84 L63 88 V75" stroke="#8e1e1a" stroke-width="1.5" stroke-linejoin="round"/>
+  <!-- 左頁版畫直排文字線 -->
+  <path d="M23 36 V60 M31 35 V61 M39 36 V60 M46 38 V61" stroke="#4a463d" stroke-width="1.2" stroke-linecap="round"/>
+  <!-- 右頁直排文字線 -->
+  <path d="M64 38 V61 M72 36 V60 M80 35 V61 M88 36 V60" stroke="#4a463d" stroke-width="1.2" stroke-linecap="round"/>
+  <!-- 斜靠在書頁上的圓框眼鏡 -->
+  <circle cx="42" cy="24" r="9.5" stroke="#1a1916" stroke-width="1.7"/>
+  <circle cx="66" cy="24" r="9.5" stroke="#1a1916" stroke-width="1.7"/>
+  <path d="M51.5 23.5 C53 21.5 55 21.5 56.5 23.5 M33 22 L22 14 M75 22 L86 14" stroke="#1a1916" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

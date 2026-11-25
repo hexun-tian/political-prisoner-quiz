@@ -1,0 +1,306 @@
+@import "tailwindcss";
+
+/**
+ * 《假如我是政治犯》懷舊舊報紙視覺系統
+ * 60% 泛黃陳舊新聞紙底色（#dcc998）、30% 鉛字炭黑與報紙欄線（#1a1916）、10% 套紅印色（#8e1e1a）。
+ */
+:root {
+  --desk-bg: #181715;
+  --desk-border: rgba(220, 201, 152, 0.22);
+  --desk-text: #e2d3ae;
+  --desk-text-muted: #a69878;
+
+  --paper-base: #dcc998;
+  --paper-edge: #c4ae78;
+  --paper-box: #cfba85;
+  --paper-highlight: #eadbb2;
+  --ink-primary: #1a1916;
+  --ink-secondary: #37332b;
+  --ink-muted: #585144;
+  --hairline-border: rgba(26, 25, 22, 0.3);
+  --hairline-strong: rgba(26, 25, 22, 0.78);
+  --vermilion-ink: #8e1e1a;
+  --vermilion-ink-dark: #6b1411;
+  --vermilion-tint: rgba(142, 30, 26, 0.09);
+}
+
+@layer base {
+  html,
+  body {
+    background-color: var(--desk-bg);
+    color: var(--ink-primary);
+    font-family: "Noto Sans TC", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1,
+  h2,
+  h3,
+  .font-archival-serif {
+    font-family: "Noto Serif TC", "Songti TC", "PMingLiU", serif;
+  }
+
+  .font-archival-display {
+    font-family: "Cactus Classical Serif", "Noto Serif TC", "Songti TC", serif;
+  }
+
+  .font-archival-hand {
+    font-family: "LXGW WenKai TC", "Noto Serif TC", serif;
+  }
+
+  .font-archival-mono {
+    font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/**
+ * 深暗閱報案桌底色（含全域微弱重複紙紋）
+ */
+.archival-desk-bg {
+  background-color: var(--desk-bg);
+  background-image:
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='deskGrain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23deskGrain)' opacity='0.04'/%3E%3C/svg%3E"),
+    radial-gradient(circle at 50% 15%, rgba(74, 64, 46, 0.24) 0%, transparent 65%),
+    radial-gradient(circle at 50% 100%, rgba(0, 0, 0, 0.54) 0%, transparent 60%);
+  background-repeat: repeat, no-repeat, no-repeat;
+  background-size: 200px 200px, 100% 100%, 100% 100%;
+}
+
+/**
+ * App.tsx 全域「陳舊新聞紙張」重複紋理、泛黃雜訊與螢幕邊緣深黃漸層做舊圖層
+ */
+.archival-global-newsprint-layer {
+  background-color: rgba(220, 201, 152, 0.08);
+  background-image:
+    radial-gradient(
+      ellipse at 50% 50%,
+      transparent 48%,
+      rgba(168, 124, 44, 0.16) 78%,
+      rgba(128, 88, 22, 0.34) 100%
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(182, 154, 96, 0.035) 0px,
+      rgba(182, 154, 96, 0.035) 1px,
+      transparent 1px,
+      transparent 5px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(120, 96, 52, 0.025) 0px,
+      rgba(120, 96, 52, 0.025) 1px,
+      transparent 1px,
+      transparent 12px
+    ),
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 260 260' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='globalNewsprintNoise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.88' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23globalNewsprintNoise)' opacity='0.11'/%3E%3C/svg%3E");
+  background-repeat: no-repeat, repeat, repeat, repeat;
+  background-size: 100% 100%, auto, auto, 260px 260px;
+  box-shadow: inset 0 0 110px rgba(138, 96, 26, 0.32);
+}
+
+/**
+ * 全域頁面容器之輕微泛黃紙張微紋與攤開報紙摺痕感
+ */
+.archival-global-newsprint {
+  background-image:
+    radial-gradient(circle at 18% 24%, rgba(232, 212, 160, 0.07) 0%, transparent 45%),
+    radial-gradient(circle at 82% 76%, rgba(196, 168, 108, 0.07) 0%, transparent 48%),
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 220 220' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='pagePaperNoise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23pagePaperNoise)' opacity='0.055'/%3E%3C/svg%3E");
+  background-repeat: no-repeat, no-repeat, repeat;
+  background-size: 100% 100%, 100% 100%, 220px 220px;
+}
+
+/**
+ * 舊報紙版面質感（泛黃再生新聞紙紋 ＋ 邊緣深黃色氧化漸層做舊 ＋ 網點肌理）
+ */
+.archival-paper-sheet {
+  background-color: var(--paper-base);
+  border: 1px solid rgba(112, 78, 24, 0.45);
+  background-image:
+    radial-gradient(
+      ellipse at 50% 48%,
+      rgba(242, 228, 186, 0.5) 0%,
+      rgba(214, 187, 120, 0.16) 54%,
+      rgba(162, 120, 44, 0.45) 86%,
+      rgba(122, 84, 24, 0.62) 100%
+    ),
+    radial-gradient(circle, rgba(42, 33, 18, 0.04) 1px, transparent 1px),
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 240 240' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='newsprintNoise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.92' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23newsprintNoise)' opacity='0.095'/%3E%3C/svg%3E");
+  background-repeat: no-repeat, repeat, repeat;
+  background-size: 100% 100%, 4px 4px, 240px 240px;
+  box-shadow:
+    inset 0 0 84px rgba(142, 98, 28, 0.48),
+    inset 0 0 26px rgba(108, 70, 16, 0.38),
+    inset 0 0 6px rgba(66, 42, 10, 0.28),
+    0 6px 14px rgba(0, 0, 0, 0.42),
+    0 24px 52px -12px rgba(0, 0, 0, 0.72);
+}
+
+/**
+ * 鉛字蓋印感互動按鈕（懸停微浮現陰影，點擊下壓回饋）
+ */
+.archival-press-btn {
+  transition: transform 140ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 140ms cubic-bezier(0.22, 1, 0.36, 1), background-color 150ms ease, color 150ms ease;
+  box-shadow: 2px 2px 0 rgba(26, 25, 22, 0.85);
+}
+
+.archival-press-btn:hover:not(:disabled) {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 rgba(26, 25, 22, 0.92);
+}
+
+.archival-press-btn:active:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow: 0 0 0 rgba(26, 25, 22, 0.85);
+}
+
+/**
+ * 傳統報紙報眉雙線（上粗下細）
+ */
+.newsprint-masthead-rule {
+  border-top: 3px solid var(--ink-primary);
+  border-bottom: 1px solid var(--ink-primary);
+}
+
+/**
+ * 傳統雙線分隔
+ */
+.archival-double-rule {
+  border-bottom: 4px double var(--ink-primary);
+}
+
+/**
+ * 舊報紙裝飾版畫半色調網點樣式（無框透明底，直接印於泛黃報紙上並帶有柔和網點肌理）
+ */
+.newsprint-halftone-frame {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+  background-color: transparent;
+}
+
+.newsprint-halftone-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle, rgba(26, 25, 22, 0.22) 0.75px, transparent 1px),
+    radial-gradient(circle, rgba(26, 25, 22, 0.16) 0.7px, transparent 1px);
+  background-size: 4px 4px;
+  background-position: 0 0, 2px 2px;
+  -webkit-mask-image: radial-gradient(ellipse at center, black 42%, transparent 78%);
+  mask-image: radial-gradient(ellipse at center, black 42%, transparent 78%);
+  mix-blend-mode: multiply;
+  opacity: 0.7;
+}
+
+.newsprint-halftone-img {
+  filter: contrast(1.08) sepia(0.18);
+  mix-blend-mode: multiply;
+}
+
+/**
+ * 關防大印蓋印動態（僅使用 transform / opacity）
+ */
+@keyframes stamp-press {
+  0% {
+    opacity: 0;
+    transform: scale(1.16);
+  }
+  70% {
+    opacity: 0.84;
+    transform: scale(0.985);
+  }
+  100% {
+    opacity: 0.78;
+    transform: scale(1);
+  }
+}
+
+.animate-stamp-press {
+  animation: stamp-press 280ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/**
+ * 復古報紙新聞標題跑馬燈（雙倍無縫水平捲動、邊緣柔和淡出與懸停暫停）
+ */
+@keyframes newspaper-marquee-scroll {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.newspaper-marquee-viewport {
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    black 16px,
+    black calc(100% - 16px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    black 16px,
+    black calc(100% - 16px),
+    transparent 100%
+  );
+}
+
+.newspaper-marquee-track {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation: newspaper-marquee-scroll 26s linear infinite;
+}
+
+.newspaper-marquee-strip:hover .newspaper-marquee-track,
+.newspaper-marquee-strip:focus-within .newspaper-marquee-track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-stamp-press {
+    animation: none;
+    opacity: 0.78;
+    transform: none;
+  }
+
+  .newspaper-marquee-viewport {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .newspaper-marquee-track {
+    animation: none;
+    width: auto;
+    transform: none;
+    flex-wrap: wrap;
+  }
+
+  .newspaper-marquee-track span {
+    white-space: normal;
+  }
+
+  .newspaper-marquee-duplicate {
+    display: none;
+  }
+
+  .archival-press-btn:hover:not(:disabled),
+  .archival-press-btn:active:not(:disabled) {
+    transform: none;
+  }
+
+  * {
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 84" width="100" height="84" fill="none" aria-hidden="true">
+  <!-- 復古報刊裝飾小圖：平反文書與橄欖枝（透明背景） -->
+  <!-- 公告文書紙卷 -->
+  <rect x="20" y="18" width="44" height="48" fill="#1a1916" fill-opacity="0.05" stroke="#1a1916" stroke-width="1.8"/>
+  <path d="M27 28 H57 M27 36 H53 M27 44 H47" stroke="#4a463d" stroke-width="1.3" stroke-linecap="round"/>
+  <!-- 套紅撤銷圓印 -->
+  <circle cx="51" cy="52" r="7.5" stroke="#8e1e1a" stroke-width="1.6"/>
+  <path d="M47 52 L50 55 L56 49" stroke="#8e1e1a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- 橄欖枝葉裝飾 -->
+  <path d="M62 66 C69 52 76 38 86 24" stroke="#1a1916" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M70 50 C64 46 64 40 70 40 C74 44 74 48 70 50 Z" fill="#1a1916" fill-opacity="0.14" stroke="#1a1916" stroke-width="1.2"/>
+  <path d="M77 38 C71 34 71 28 77 28 C81 32 81 36 77 38 Z" fill="#1a1916" fill-opacity="0.14" stroke="#1a1916" stroke-width="1.2"/>
+  <path d="M73 53 C79 51 84 54 81 59 C76 59 73 56 73 53 Z" fill="#1a1916" fill-opacity="0.14" stroke="#1a1916" stroke-width="1.2"/>
+  <path d="M10 71 H90" stroke="#1a1916" stroke-width="1.1" stroke-dasharray="2 2"/>
+</svg>

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 110 96" width="110" height="96" fill="none" aria-hidden="true">
+  <!-- 復古報刊飾圖：航空家書信封與郵戳（透明背景版畫） -->
+  <!-- 微傾航空信封 -->
+  <g transform="rotate(-6 55 48)">
+    <rect x="16" y="25" width="78" height="48" fill="#1a1916" fill-opacity="0.05" stroke="#1a1916" stroke-width="2"/>
+    <path d="M16 25 L55 53 L94 25" stroke="#1a1916" stroke-width="1.7" stroke-linejoin="round"/>
+    <!-- 航空斜紋鑲邊飾線 -->
+    <path d="M21 25 L17 29 M31 25 L27 29 M41 25 L37 29 M71 25 L67 29 M81 25 L77 29" stroke="#8e1e1a" stroke-width="1.6"/>
+    <!-- 郵票與波紋郵戳 -->
+    <rect x="74" y="31" width="14" height="16" stroke="#1a1916" stroke-width="1.3" stroke-dasharray="2 1"/>
+    <circle cx="67" cy="39" r="7" stroke="#8e1e1a" stroke-width="1.2"/>
+    <path d="M52 36 C56 34 60 38 64 36 M52 41 C56 39 60 43 64 41" stroke="#4a463d" stroke-width="1"/>
+    <!-- 收信橫線 -->
+    <path d="M28 57 H64 M28 64 H54" stroke="#4a463d" stroke-width="1.3" stroke-linecap="round"/>
+  </g>
+</svg>

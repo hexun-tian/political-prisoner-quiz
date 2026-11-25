@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 100" width="120" height="100" fill="none" aria-hidden="true">
+  <!-- 復古報刊飾圖：檯燈、書卷與鋼筆（透明背景鋼筆版畫） -->
+  <!-- 檯燈底座與燈頸 -->
+  <path d="M26 84 H62 M31 84 C31 78 57 78 57 84" stroke="#1a1916" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M44 79 V46 C44 31 54 22 69 22" stroke="#1a1916" stroke-width="2.4" stroke-linecap="round"/>
+  <!-- 燈罩 -->
+  <path d="M58 28 L84 22 L92 38 L52 42 Z" fill="#1a1916" fill-opacity="0.1" stroke="#1a1916" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M62 29 L82 25 M59 35 L86 31" stroke="#4a463d" stroke-width="1"/>
+  <!-- 暖色套紅燈光暈線 -->
+  <path d="M66 46 L61 55 M74 46 L74 56 M82 45 L88 53" stroke="#8e1e1a" stroke-width="1.4" stroke-linecap="round" opacity="0.8"/>
+  <!-- 疊放案卷與鋼筆 -->
+  <path d="M54 74 H104 L99 84 H49 Z" stroke="#1a1916" stroke-width="1.8" stroke-linejoin="round"/>
+  <path d="M58 67 H100 L96 74 H54 Z" stroke="#1a1916" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="M58 78 H95 M62 71 H91" stroke="#4a463d" stroke-width="1"/>
+  <!-- 鋼筆斜置 -->
+  <path d="M74 63 L98 48 L101 52 L77 67 L70 67 Z" fill="#dcc998" stroke="#1a1916" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="M70 67 L74 63" stroke="#8e1e1a" stroke-width="1.6"/>
+  <!-- 版畫裝飾細線 -->
+  <path d="M16 89 H108" stroke="#1a1916" stroke-width="1.2" stroke-dasharray="2 3"/>
+</svg>
