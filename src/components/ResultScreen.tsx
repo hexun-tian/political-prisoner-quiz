@@ -27,6 +27,7 @@ import { IDENTITY_PROFILES } from '../data/identities';
 import type { AnswerRecord, OptionKey, PhotoRecord, QuestionItem, ScoringResult } from '../types/game';
 import { createTemporaryCaseShare, type CreatedCaseShare } from '../utils/caseShareService';
 import { renderPersonalCaseFilePng, SEAL_IMAGE_URL } from '../utils/exportCaseFilePng';
+import { PHOTO_FILTER_PRESETS } from '../utils/photoEffects';
 import { playArchivalStampSound } from '../utils/sound';
 import { ArchivalStamp } from './ArchivalStamp';
 
@@ -548,8 +549,17 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
                   未附個人照片
                 </div>
               )}
-              <span className="text-[11px] text-[var(--ink-muted)]">
-                {photoRecord?.preset === 'none' ? '個人照片（原圖無濾鏡）' : '個人照片（復古濾鏡）'}
+              <span className="text-[11px] text-[var(--ink-muted)] text-center sm:text-left">
+                {(() => {
+                  if (!photoRecord) return '未附個人照片';
+                  const presetLabel =
+                    PHOTO_FILTER_PRESETS.find((p) => p.id === photoRecord.preset)?.shortLabel ??
+                    '自訂濾鏡';
+                  const phrase = photoRecord.overlay?.text?.trim();
+                  return phrase
+                    ? `個人照片（${presetLabel} · 「${phrase}」）`
+                    : `個人照片（${presetLabel}）`;
+                })()}
               </span>
             </div>
 

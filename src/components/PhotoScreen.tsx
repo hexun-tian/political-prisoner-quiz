@@ -1,11 +1,12 @@
 /**
  * @file src/components/PhotoScreen.tsx
- * @description 遊戲首頁暨檔案存照建檔頁：一開始即呈現舊報紙頭版標題《假如我是政治犯》與照相／上傳／略過功能。
- * 支援「裝置鏡頭拍攝（需先取得明確同意）」、「本機照片上傳」或「略過拍照」，
- * 並於瀏覽器本機 Canvas 套用黑白、顆粒與舊照片效果，全程不上傳或儲存至任何伺服器。
+ * @description 檔案存照建檔頁：
+ * 支援「裝置鏡頭拍攝（需先取得明確同意）」、「本機照片上傳」或「略過拍照」。
+ * 拍攝時即可即時預覽並切換 8 款復古與現代潮流濾鏡，以及頭頂／底部「我是政治犯」、「我有罪」等純報紙字體大字（無長方形邊框），
+ * 拍攝或上傳完成後仍可自由修改所有濾鏡與語句設定，全程於本機瀏覽器處理不上傳。
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -18,11 +19,23 @@ import {
   VolumeX,
   X,
 } from 'lucide-react';
-import type { PhotoFilterPreset, PhotoRecord } from '../types/game';
+import type {
+  PhotoCaptionColorStyle,
+  PhotoCaptionPlacement,
+  PhotoFilterPreset,
+  PhotoOverlayConfig,
+  PhotoRecord,
+} from '../types/game';
 import {
+  DEFAULT_PHOTO_OVERLAY,
+  PHOTO_CAPTION_PRESETS,
+  PHOTO_COLOR_STYLE_OPTIONS,
   PHOTO_FILTER_PRESETS,
+  PHOTO_PLACEMENT_OPTIONS,
   applyArchivalPhotoEffect,
   captureVideoFrameToDataUrl,
+  generateFilterThumbnails,
+  getLiveCameraFilterCss,
   readUploadedPhotoToDataUrl,
 } from '../utils/photoEffects';
 
@@ -37,6 +50,38 @@ interface PhotoScreenProps {
 
 type PhotoStepMode = 'CHOICE' | 'CONSENT' | 'CAMERA' | 'PREVIEW';
 
+const LIVE_SWATCH_PREVIEW_STYLES: Record<PhotoFilterPreset, string> = {
+  none: 'bg-gradient-to-br from-[#d9cbb0] via-[#b89f7d] to-[#6e5a44]',
+  ccd_2000: 'bg-gradient-to-br from-[#bfe0e4] via-[#7baab5] to-[#2e4d57]',
+  kodak_film: 'bg-gradient-to-br from-[#f2c58a] via-[#c78f5c] to-[#3d4d49]',
+  polaroid_fade: 'bg-gradient-to-br from-[#ebd8cf] via-[#bfa99f] to-[#6a6368]',
+  newspaper_halftone: 'bg-gradient-to-br from-[#e6d8b8] via-[#8e8572] to-[#1e1b17]',
+  classic_bw: 'bg-gradient-to-br from-[#e4e1d8] via-[#7f7c75] to-[#1c1a17]',
+  aged_sepia_bw: 'bg-gradient-to-br from-[#ebd9b1] via-[#9e8659] to-[#3a2b18]',
+  crimson_darkroom: 'bg-gradient-to-br from-[#f8e2d6] via-[#a81c16] to-[#140606]',
+};
+
+function getLiveTextShadowStyle(colorStyle: PhotoCaptionColorStyle): React.CSSProperties {
+  if (colorStyle === 'paper_stamp') {
+    return {
+      color: '#fbf6e8',
+      textShadow: '0 2px 10px rgba(10, 9, 8, 0.9), 0 0 3px rgba(10, 9, 8, 0.85)',
+    };
+  }
+  if (colorStyle === 'ink_tape') {
+    return {
+      color: '#141310',
+      textShadow:
+        '-1.5px -1.5px 0 rgba(247,239,216,0.92), 1.5px -1.5px 0 rgba(247,239,216,0.92), -1.5px 1.5px 0 rgba(247,239,216,0.92), 1.5px 1.5px 0 rgba(247,239,216,0.92), 0 3px 10px rgba(0,0,0,0.28)',
+    };
+  }
+  return {
+    color: '#b81d18',
+    textShadow:
+      '-1.5px -1.5px 0 rgba(247,239,216,0.94), 1.5px -1.5px 0 rgba(247,239,216,0.94), -1.5px 1.5px 0 rgba(247,239,216,0.94), 1.5px 1.5px 0 rgba(247,239,216,0.94), 0 3px 10px rgba(0,0,0,0.28)',
+  };
+}
+
 export const PhotoScreen: React.FC<PhotoScreenProps> = ({
   initialPhoto,
   onConfirmPhoto,
@@ -47,15 +92,23 @@ export const PhotoScreen: React.FC<PhotoScreenProps> = ({
 }) => {
   const [mode, setMode] = useState<PhotoStepMode>(initialPhoto ? 'PREVIEW' : 'CHOICE');
   const [photoRecord, setPhotoRecord] = useState<PhotoRecord | null>(initialPhoto);
+  const [draftPreset, setDraftPreset] = useState<PhotoFilterPreset>(
+    initialPhoto?.preset ?? 'none'
+  );
+  const [draftOverlay, setDraftOverlay] = useState<PhotoOverlayConfig>(
+    initialPhoto?.overlay ?? DEFAULT_PHOTO_OVERLAY
+  );
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [cameraReady, setCameraReady] = useState<boolean>(false);
   const [streamVersion, setStreamVersion] = useState<number>(0);
+  const [thumbnails, setThumbnails] = useState<Partial<Record<PhotoFilterPreset, string>>>({});
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const applyRequestIdRef = useRef<number>(0);
 
   const stopCameraStream = useCallback(() => {
     if (streamRef.current) {
@@ -85,6 +138,30 @@ export const PhotoScreen: React.FC<PhotoScreenProps> = ({
       });
     }
   }, [mode, streamVersion]);
+
+  // 進入預覽並擁有原圖時，於本機生成 8 款濾鏡的即時縮圖預覽
+  useEffect(() => {
+    const originalUrl = photoRecord?.originalDataUrl;
+    if (!originalUrl) {
+      setThumbnails({});
+      return;
+    }
+
+    let cancelled = false;
+    void generateFilterThumbnails(originalUrl)
+      .then((map) => {
+        if (!cancelled) {
+          setThumbnails(map);
+        }
+      })
+      .catch(() => {
+        // 縮圖產生失敗時維持色票預覽
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [photoRecord?.originalDataUrl]);
 
   const startCamera = useCallback(
     async (targetFacing: 'user' | 'environment') => {
@@ -132,6 +209,7 @@ export const PhotoScreen: React.FC<PhotoScreenProps> = ({
     void startCamera(nextFacing);
   };
 
+  /** 拍攝當下直接套用拍攝前選好的濾鏡與語句設定，之後於預覽頁仍可繼續修改 */
   const handleCapturePhoto = async () => {
     if (!videoRef.current || !cameraReady) return;
     setIsProcessing(true);
@@ -144,13 +222,19 @@ export const PhotoScreen: React.FC<PhotoScreenProps> = ({
       );
       stopCameraStream();
 
-      const defaultPreset: PhotoFilterPreset = 'none';
-      const processedDataUrl = await applyArchivalPhotoEffect(originalDataUrl, defaultPreset);
+      const chosenPreset = draftPreset;
+      const chosenOverlay = { ...draftOverlay };
+      const processedDataUrl = await applyArchivalPhotoEffect(
+        originalDataUrl,
+        chosenPreset,
+        chosenOverlay
+      );
 
       setPhotoRecord({
         originalDataUrl,
         processedDataUrl,
-        preset: defaultPreset,
+        preset: chosenPreset,
+        overlay: chosenOverlay,
         source: 'camera',
       });
       setMode('PREVIEW');
@@ -179,13 +263,19 @@ export const PhotoScreen: React.FC<PhotoScreenProps> = ({
 
     try {
       const originalDataUrl = await readUploadedPhotoToDataUrl(file);
-      const defaultPreset: PhotoFilterPreset = 'none';
-      const processedDataUrl = await applyArchivalPhotoEffect(originalDataUrl, defaultPreset);
+      const chosenPreset = draftPreset;
+      const chosenOverlay = { ...draftOverlay };
+      const processedDataUrl = await applyArchivalPhotoEffect(
+        originalDataUrl,
+        chosenPreset,
+        chosenOverlay
+      );
 
       setPhotoRecord({
         originalDataUrl,
         processedDataUrl,
-        preset: defaultPreset,
+        preset: chosenPreset,
+        overlay: chosenOverlay,
         source: 'upload',
       });
       setMode('PREVIEW');
@@ -196,22 +286,121 @@ export const PhotoScreen: React.FC<PhotoScreenProps> = ({
     }
   };
 
-  const handleChangePreset = async (preset: PhotoFilterPreset) => {
-    if (!photoRecord || isProcessing) return;
-    setIsProcessing(true);
-    try {
+  /**
+   * 同時支援 CAMERA（即時套用預覽）與 PREVIEW（重新顯影合成 Canvas）的統一設定更新
+   */
+  const applySettings = useCallback(
+    async (nextPreset: PhotoFilterPreset, nextOverlay: PhotoOverlayConfig) => {
+      setDraftPreset(nextPreset);
+      setDraftOverlay(nextOverlay);
+
+      if (mode !== 'PREVIEW' || !photoRecord) {
+        return;
+      }
+
+      const requestId = ++applyRequestIdRef.current;
+      setPhotoRecord((prev) =>
+        prev
+          ? {
+              ...prev,
+              preset: nextPreset,
+              overlay: nextOverlay,
+            }
+          : prev
+      );
+
       const processedDataUrl = await applyArchivalPhotoEffect(
         photoRecord.originalDataUrl,
-        preset
+        nextPreset,
+        nextOverlay
       );
-      setPhotoRecord({
-        ...photoRecord,
-        preset,
-        processedDataUrl,
+
+      if (requestId === applyRequestIdRef.current) {
+        setPhotoRecord((prev) =>
+          prev
+            ? {
+                ...prev,
+                preset: nextPreset,
+                overlay: nextOverlay,
+                processedDataUrl,
+              }
+            : prev
+        );
+      }
+    },
+    [mode, photoRecord]
+  );
+
+  const activePreset = mode === 'PREVIEW' && photoRecord ? photoRecord.preset : draftPreset;
+  const activeOverlay =
+    mode === 'PREVIEW' && photoRecord?.overlay ? photoRecord.overlay : draftOverlay;
+
+  const handleChangePreset = (preset: PhotoFilterPreset) => {
+    void applySettings(preset, activeOverlay);
+  };
+
+  const handleSelectCaptionPreset = (phrase: string) => {
+    if (!phrase) {
+      const nextPlacement: PhotoCaptionPlacement =
+        activeOverlay.placement === 'above_head' || activeOverlay.placement === 'bottom_text'
+          ? 'none'
+          : activeOverlay.placement;
+      void applySettings(activePreset, {
+        ...activeOverlay,
+        text: '',
+        placement: nextPlacement,
       });
-    } finally {
-      setIsProcessing(false);
+      return;
     }
+
+    const nextPlacement: PhotoCaptionPlacement =
+      activeOverlay.placement === 'none' ? 'above_head' : activeOverlay.placement;
+    void applySettings(activePreset, {
+      ...activeOverlay,
+      text: phrase,
+      placement: nextPlacement,
+    });
+  };
+
+  const handleCustomTextChange = (value: string) => {
+    const trimmedCheck = value.trim();
+    const nextPlacement: PhotoCaptionPlacement =
+      trimmedCheck.length > 0 && activeOverlay.placement === 'none'
+        ? 'above_head'
+        : activeOverlay.placement;
+    void applySettings(activePreset, {
+      ...activeOverlay,
+      text: value,
+      placement: nextPlacement,
+    });
+  };
+
+  const handleChangePlacement = (placement: PhotoCaptionPlacement) => {
+    const nextText =
+      placement !== 'none' && !activeOverlay.text.trim() ? '我是政治犯' : activeOverlay.text;
+    void applySettings(activePreset, {
+      ...activeOverlay,
+      placement,
+      text: nextText,
+    });
+  };
+
+  const handleChangeColorStyle = (colorStyle: PhotoCaptionColorStyle) => {
+    const nextPlacement: PhotoCaptionPlacement =
+      activeOverlay.placement === 'none' ? 'above_head' : activeOverlay.placement;
+    const nextText = !activeOverlay.text.trim() ? '我是政治犯' : activeOverlay.text;
+    void applySettings(activePreset, {
+      ...activeOverlay,
+      placement: nextPlacement,
+      text: nextText,
+      colorStyle,
+    });
+  };
+
+  const handleRetakeToCamera = () => {
+    setPhotoRecord(null);
+    setCameraError(null);
+    void startCamera(facingMode);
   };
 
   const handleRetake = () => {
@@ -230,6 +419,206 @@ export const PhotoScreen: React.FC<PhotoScreenProps> = ({
     stopCameraStream();
     onSkip();
   };
+
+  const activePresetInfo = useMemo(
+    () =>
+      PHOTO_FILTER_PRESETS.find((item) => item.id === activePreset) ?? PHOTO_FILTER_PRESETS[0],
+    [activePreset]
+  );
+
+  const activePlacementInfo = useMemo(
+    () =>
+      PHOTO_PLACEMENT_OPTIONS.find((item) => item.id === activeOverlay.placement) ??
+      PHOTO_PLACEMENT_OPTIONS[0],
+    [activeOverlay.placement]
+  );
+
+  const renderFilterAndTextControls = (isLiveCamera: boolean) => (
+    <div className="space-y-5">
+      {/* 1. 濾鏡選擇 */}
+      <div className="space-y-2.5">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <p className="text-xs font-bold text-[#8e1e1a] tracking-wide">
+            {isLiveCamera ? '01. 拍攝前先選濾鏡（拍完也能再改）' : '01. 選擇或更換照片濾鏡'}
+          </p>
+          <span className="text-[11px] text-[var(--ink-muted)]">
+            {activePresetInfo.description}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-4 gap-2">
+          {PHOTO_FILTER_PRESETS.map((preset) => {
+            const active = activePreset === preset.id;
+            const thumbSrc = !isLiveCamera ? thumbnails[preset.id] : undefined;
+            return (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() => handleChangePreset(preset.id)}
+                aria-pressed={active}
+                className={`p-1.5 border text-center transition-colors cursor-pointer flex flex-col items-center gap-1 ${
+                  active
+                    ? 'border-2 border-[#8e1e1a] bg-[var(--vermilion-tint)]'
+                    : 'border-[var(--hairline-strong)] bg-[var(--paper-box)]/50 hover:bg-[#1a1916]/[0.05]'
+                }`}
+              >
+                {thumbSrc ? (
+                  <div className="w-full aspect-[3/4] overflow-hidden bg-[#1a1916]/10 border border-[var(--hairline-border)]">
+                    <img
+                      src={thumbSrc}
+                      alt={`${preset.label} 預覽`}
+                      className="w-full h-full object-cover block"
+                    />
+                  </div>
+                ) : (
+                  <div
+                    aria-hidden="true"
+                    className={`w-full h-7 border border-[#1a1916]/25 ${LIVE_SWATCH_PREVIEW_STYLES[preset.id]}`}
+                  />
+                )}
+                <span
+                  className={`text-[11px] leading-tight whitespace-nowrap truncate w-full ${
+                    active ? 'font-bold text-[#8e1e1a]' : 'font-medium text-[var(--ink-primary)]'
+                  }`}
+                >
+                  {preset.shortLabel}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 2. 頭頂／底部純報紙字體語句 */}
+      <div className="space-y-3.5 pt-4 border-t border-[var(--hairline-border)]">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <p className="text-xs font-bold text-[#8e1e1a] tracking-wide">
+            02. 加上報紙字體語句（純字體無框線）
+          </p>
+          <span className="text-[11px] text-[var(--ink-muted)]">
+            {activePlacementInfo.description}
+          </span>
+        </div>
+
+        {/* 擺放位置切換 */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+          {PHOTO_PLACEMENT_OPTIONS.map((opt) => {
+            const active = activeOverlay.placement === opt.id;
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => handleChangePlacement(opt.id)}
+                aria-pressed={active}
+                className={`min-h-[40px] px-2.5 py-2 border text-xs font-medium transition-colors whitespace-nowrap cursor-pointer ${
+                  active
+                    ? 'border-[#1a1916] bg-[#1a1916] text-[#eadbb2] font-bold'
+                    : 'border-[var(--hairline-strong)] bg-[var(--paper-box)]/45 text-[var(--ink-primary)] hover:bg-[#1a1916]/[0.06]'
+                }`}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 快速語句按鈕 */}
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              onClick={() => handleSelectCaptionPreset('')}
+              aria-pressed={!activeOverlay.text.trim()}
+              className={`min-h-[36px] px-3 py-1.5 border text-xs transition-colors whitespace-nowrap cursor-pointer ${
+                !activeOverlay.text.trim()
+                  ? 'border-[#8e1e1a] bg-[var(--vermilion-tint)] font-bold text-[#8e1e1a]'
+                  : 'border-[var(--hairline-border)] bg-[var(--paper-highlight)]/50 text-[var(--ink-secondary)] hover:border-[var(--hairline-strong)]'
+              }`}
+            >
+              無語句
+            </button>
+
+            {PHOTO_CAPTION_PRESETS.map((phrase) => {
+              const active = activeOverlay.text === phrase;
+              return (
+                <button
+                  key={phrase}
+                  type="button"
+                  onClick={() => handleSelectCaptionPreset(phrase)}
+                  aria-pressed={active}
+                  className={`min-h-[36px] px-3 py-1.5 border text-xs transition-colors whitespace-nowrap cursor-pointer ${
+                    active
+                      ? 'border-[#8e1e1a] bg-[var(--vermilion-tint)] font-bold text-[#8e1e1a]'
+                      : 'border-[var(--hairline-border)] bg-[var(--paper-highlight)]/50 text-[var(--ink-primary)] hover:border-[var(--hairline-strong)]'
+                  }`}
+                >
+                  {phrase}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* 自訂短語輸入列 */}
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={activeOverlay.text}
+              maxLength={12}
+              onChange={(e) => handleCustomTextChange(e.target.value)}
+              placeholder="或輸入自訂短語（例如：拒絕審判，最多 12 字）"
+              aria-label="自訂照片報紙標語文字"
+              className="flex-1 min-h-[42px] px-3 py-2 border border-[var(--hairline-strong)] bg-[#f8f2df] text-sm text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] focus:outline-none focus:border-[#8e1e1a]"
+            />
+            {activeOverlay.text && (
+              <button
+                type="button"
+                onClick={() => handleSelectCaptionPreset('')}
+                className="min-h-[42px] px-3 py-2 border border-[var(--hairline-strong)] text-xs font-medium text-[var(--ink-secondary)] hover:text-[#8e1e1a] whitespace-nowrap cursor-pointer"
+              >
+                清除
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* 字體墨色風格 */}
+        {activeOverlay.placement !== 'none' && (
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <span className="text-xs font-medium text-[var(--ink-secondary)]">字體墨色：</span>
+            <div className="flex flex-wrap gap-1.5">
+              {PHOTO_COLOR_STYLE_OPTIONS.map((styleOpt) => {
+                const active = activeOverlay.colorStyle === styleOpt.id;
+                return (
+                  <button
+                    key={styleOpt.id}
+                    type="button"
+                    onClick={() => handleChangeColorStyle(styleOpt.id)}
+                    aria-pressed={active}
+                    className={`inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1 border text-xs transition-colors whitespace-nowrap cursor-pointer ${
+                      active
+                        ? 'border-[#8e1e1a] bg-[var(--vermilion-tint)] font-bold text-[#8e1e1a]'
+                        : 'border-[var(--hairline-border)] bg-[var(--paper-box)]/45 text-[var(--ink-primary)] hover:border-[var(--hairline-strong)]'
+                    }`}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="w-3 h-3 border border-[#1a1916]/40 shrink-0"
+                      style={{ backgroundColor: styleOpt.swatchBg }}
+                    />
+                    <span>{styleOpt.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const livePhraseText = activeOverlay.text.trim();
+  const isLiveBorderLayout = activeOverlay.placement === 'border_top_bottom';
+  const liveFrameDark = activeOverlay.colorStyle === 'paper_stamp';
 
   return (
     <div className="min-h-screen w-full flex flex-col justify-between px-3 py-4 sm:px-8 sm:py-6">
@@ -252,7 +641,7 @@ export const PhotoScreen: React.FC<PhotoScreenProps> = ({
             PHOTO FILE
           </span>
           <span aria-hidden="true">/</span>
-          <span className="truncate">拍照或上傳照片</span>
+          <span className="truncate">拍照與檔案照濾鏡</span>
         </div>
 
         <button
@@ -268,7 +657,7 @@ export const PhotoScreen: React.FC<PhotoScreenProps> = ({
 
       {/* 舊報紙頭版 ＋ 照相建檔區 */}
       <main className="w-full max-w-4xl mx-auto my-auto py-4 sm:py-6">
-        <section className="archival-paper-sheet px-5 py-6 sm:px-10 sm:py-9 space-y-6">
+        <section className="archival-paper-sheet px-4 py-6 sm:px-9 sm:py-8 space-y-6">
           {/* 報眉雙線刊號列 */}
           <div className="newsprint-masthead-rule py-2 px-1 flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--ink-secondary)]">
             <span className="font-semibold tracking-wider text-[var(--ink-primary)]">
@@ -290,7 +679,7 @@ export const PhotoScreen: React.FC<PhotoScreenProps> = ({
               拍攝或上傳個人檔案照片
             </h1>
             <p className="text-xs sm:text-sm text-[var(--ink-secondary)] max-w-xl mx-auto">
-              附上一張照片，結果單據就會印出你的專屬頭像！拍完可自由選濾鏡，也可以直接跳過。
+              附上一張照片，結果單據就會印出你的專屬頭像！拍照當下就能選濾鏡與報紙大字語句，拍完也能隨時再調整。
             </p>
           </div>
 
@@ -409,125 +798,203 @@ export const PhotoScreen: React.FC<PhotoScreenProps> = ({
             </div>
           )}
 
-          {/* 模式 3：即時鏡頭畫面 */}
+          {/* 模式 3：即時鏡頭畫面 ＋ 拍攝當下即可即時預覽選濾鏡與語句 */}
           {mode === 'CAMERA' && (
-            <div className="space-y-5 flex flex-col items-center">
-              <div className="relative w-full max-w-[280px] sm:max-w-[320px] aspect-[3/4] bg-[#1a1916] border-2 border-[#1a1916] overflow-hidden">
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  onLoadedMetadata={() => setCameraReady(true)}
-                  className={`w-full h-full object-cover ${
-                    facingMode === 'user' ? 'scale-x-[-1]' : ''
-                  }`}
-                />
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+              {/* 左欄：即時濾鏡鏡頭觀景窗 */}
+              <div className="md:col-span-5 flex flex-col items-center space-y-3 md:sticky md:top-6">
                 <div
-                  className="absolute inset-4 border border-[#dcc998]/55 pointer-events-none"
-                  aria-hidden="true"
-                />
-                {!cameraReady && (
-                  <div className="absolute inset-0 flex items-center justify-center text-xs text-[#dcc998]">
-                    正在啟動鏡頭畫面…
+                  className={`relative w-full max-w-[264px] sm:max-w-[280px] aspect-[3/4] overflow-hidden border-2 border-[#1a1916] shadow-md transition-colors ${
+                    isLiveBorderLayout
+                      ? liveFrameDark
+                        ? 'bg-[#171614] p-3.5 pb-16'
+                        : 'bg-[#efe2be] p-3.5 pb-16'
+                      : 'bg-[#1a1916]'
+                  }`}
+                >
+                  <div className="relative w-full h-full overflow-hidden bg-[#1a1916]">
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      onLoadedMetadata={() => setCameraReady(true)}
+                      style={{ filter: getLiveCameraFilterCss(activePreset) }}
+                      className={`w-full h-full object-cover ${
+                        facingMode === 'user' ? 'scale-x-[-1]' : ''
+                      }`}
+                    />
+
+                    {/* 濾鏡專屬光影層（漏光／紅光／報紙網點） */}
+                    {activePreset === 'kodak_film' && (
+                      <div
+                        aria-hidden="true"
+                        className="pointer-events-none absolute inset-0"
+                        style={{
+                          background:
+                            'linear-gradient(108deg, rgba(242,122,42,0.24) 0%, rgba(245,168,74,0.06) 35%, transparent 65%)',
+                          mixBlendMode: 'screen',
+                        }}
+                      />
+                    )}
+                    {activePreset === 'crimson_darkroom' && (
+                      <div
+                        aria-hidden="true"
+                        className="pointer-events-none absolute inset-0 bg-[#9b1b16]/55 mix-blend-multiply"
+                      />
+                    )}
+                    {activePreset === 'newspaper_halftone' && (
+                      <div
+                        aria-hidden="true"
+                        className="pointer-events-none absolute inset-0 opacity-30 mix-blend-overlay"
+                        style={{
+                          backgroundImage:
+                            'radial-gradient(#1a1916 1px, transparent 1px)',
+                          backgroundSize: '4px 4px',
+                        }}
+                      />
+                    )}
+
+                    {/* 觀景線 */}
+                    {!isLiveBorderLayout && (
+                      <div
+                        className="absolute inset-3.5 border border-[#dcc998]/35 pointer-events-none"
+                        aria-hidden="true"
+                      />
+                    )}
+
+                    {/* 頭頂上方 / 照片下方：純報紙字體大字即時疊字預覽（無任何方框） */}
+                    {!isLiveBorderLayout &&
+                      activeOverlay.placement !== 'none' &&
+                      livePhraseText && (
+                        <div
+                          aria-hidden="true"
+                          className={`pointer-events-none absolute inset-x-3 flex justify-center text-center ${
+                            activeOverlay.placement === 'above_head'
+                              ? 'top-5'
+                              : 'bottom-5'
+                          }`}
+                        >
+                          <span
+                            className="font-archival-serif font-black tracking-[0.08em] leading-none text-2xl sm:text-[28px] select-none"
+                            style={getLiveTextShadowStyle(activeOverlay.colorStyle)}
+                          >
+                            {livePhraseText}
+                          </span>
+                        </div>
+                      )}
+
+                    {!cameraReady && (
+                      <div className="absolute inset-0 flex items-center justify-center text-xs text-[#dcc998] bg-[#1a1916]/75">
+                        正在啟動鏡頭畫面…
+                      </div>
+                    )}
                   </div>
-                )}
+
+                  {/* 留白底框模式的底部報紙字體預覽 */}
+                  {isLiveBorderLayout && (
+                    <div
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-x-3 bottom-2 flex flex-col items-center justify-center text-center"
+                    >
+                      <span
+                        className="font-archival-serif font-black tracking-[0.08em] leading-tight text-xl sm:text-2xl select-none"
+                        style={{
+                          color: liveFrameDark
+                            ? '#fbf6e8'
+                            : activeOverlay.colorStyle === 'ink_tape'
+                              ? '#141310'
+                              : '#b81d18',
+                        }}
+                      >
+                        {livePhraseText || '我是政治犯'}
+                      </span>
+                      <span
+                        className="font-archival-mono text-[8px] tracking-widest mt-0.5"
+                        style={{ color: liveFrameDark ? '#bfb18e' : '#5e4d37' }}
+                      >
+                        ARCHIVAL PHOTO · NO. 1970
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* 快門與鏡頭控制 */}
+                <div className="w-full max-w-[280px] space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => void handleCapturePhoto()}
+                    disabled={!cameraReady || isProcessing}
+                    className="archival-press-btn w-full inline-flex items-center justify-center gap-2 min-h-[48px] px-5 py-2.5 bg-[#8e1e1a] hover:bg-[#6b1411] disabled:opacity-50 text-[#eadbb2] text-sm sm:text-base font-bold cursor-pointer"
+                  >
+                    <Camera className="w-4 h-4" />
+                    <span>{isProcessing ? '顯影中…' : '咔嚓！拍下存照'}</span>
+                  </button>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={handleSwitchCamera}
+                      className="inline-flex items-center justify-center gap-1.5 min-h-[42px] px-3 py-2 border border-[var(--hairline-strong)] text-xs font-medium text-[var(--ink-primary)] hover:bg-[#1a1916]/5 cursor-pointer"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      <span>切換鏡頭</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCloseCamera}
+                      className="inline-flex items-center justify-center gap-1.5 min-h-[42px] px-3 py-2 border border-[var(--hairline-strong)] text-xs font-medium text-[var(--ink-primary)] hover:bg-[#1a1916]/5 cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      <span>關閉鏡頭</span>
+                    </button>
+                  </div>
+                </div>
               </div>
 
-              <div className="w-full flex flex-wrap items-center justify-center gap-3">
-                <button
-                  type="button"
-                  onClick={handleCloseCamera}
-                  className="inline-flex items-center justify-center gap-1.5 min-h-[46px] px-4 py-2 border border-[var(--hairline-strong)] text-sm font-medium text-[var(--ink-primary)] hover:bg-[#1a1916]/5 cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                  <span>關閉鏡頭</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleSwitchCamera}
-                  className="inline-flex items-center justify-center gap-1.5 min-h-[46px] px-4 py-2 border border-[var(--hairline-strong)] text-sm font-medium text-[var(--ink-primary)] hover:bg-[#1a1916]/5 cursor-pointer"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  <span>切換前／後鏡頭</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => void handleCapturePhoto()}
-                  disabled={!cameraReady || isProcessing}
-                  className="archival-press-btn inline-flex items-center justify-center gap-2 min-h-[46px] px-6 py-2.5 bg-[#8e1e1a] hover:bg-[#6b1411] disabled:opacity-50 text-[#eadbb2] text-sm sm:text-base font-bold cursor-pointer"
-                >
-                  <Camera className="w-4 h-4" />
-                  <span>{isProcessing ? '顯影中…' : '咔嚓！拍下存照'}</span>
-                </button>
-              </div>
+              {/* 右欄：拍攝時直接調整濾鏡與報紙語句 */}
+              <div className="md:col-span-7">{renderFilterAndTextControls(true)}</div>
             </div>
           )}
 
-          {/* 模式 4：預覽與顯影效果調整 */}
+          {/* 模式 4：拍攝／上傳後預覽，可自由更換濾鏡與報紙字體語句 */}
           {mode === 'PREVIEW' && photoRecord && (
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
-              <div className="md:col-span-5 flex flex-col items-center space-y-2">
+              {/* 左欄：即時 3:4 存照預覽 */}
+              <div className="md:col-span-5 flex flex-col items-center space-y-2.5 md:sticky md:top-6">
                 <div className="p-2 bg-[#eadbb2] border border-[var(--hairline-strong)] shadow-sm">
                   <img
                     src={photoRecord.processedDataUrl}
-                    alt={
-                      photoRecord.preset === 'none'
-                        ? '無濾鏡原圖之模擬檔案存照'
-                        : '套用復古濾鏡效果之模擬檔案存照'
-                    }
-                    className="w-[190px] sm:w-[210px] aspect-[3/4] object-cover block"
+                    alt={`模擬檔案存照：${activePresetInfo.label}`}
+                    className="w-[220px] sm:w-[248px] aspect-[3/4] object-cover block select-none"
                   />
                 </div>
-                <span className="text-[11px] text-[var(--ink-muted)]">
-                  僅存於本機瀏覽器記憶體（不上傳）
-                </span>
+                <div className="text-center space-y-0.5">
+                  <div className="flex flex-wrap items-center justify-center gap-1.5 text-xs font-medium text-[var(--ink-primary)]">
+                    <span>{activePresetInfo.label}</span>
+                    {activeOverlay.placement !== 'none' && (
+                      <>
+                        <span aria-hidden="true">·</span>
+                        <span className="text-[#8e1e1a]">
+                          {activeOverlay.text.trim()
+                            ? `「${activeOverlay.text.trim()}」`
+                            : activePlacementInfo.label}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-[var(--ink-muted)]">
+                    僅存於本機瀏覽器記憶體（不上傳）
+                  </p>
+                </div>
               </div>
 
+              {/* 右欄：8 款濾鏡縮圖 ＋ 純報紙字體語句編輯 ＋ 送出 */}
               <div className="md:col-span-7 space-y-5">
-                <div className="space-y-2">
-                  <p className="text-xs font-bold text-[#8e1e1a] tracking-wide">
-                    選擇是否套用復古濾鏡
-                  </p>
-                  <div className="divide-y divide-[var(--hairline-border)] border border-[var(--hairline-strong)]">
-                    {PHOTO_FILTER_PRESETS.map((preset) => {
-                      const active = photoRecord.preset === preset.id;
-                      return (
-                        <button
-                          key={preset.id}
-                          type="button"
-                          onClick={() => void handleChangePreset(preset.id)}
-                          disabled={isProcessing}
-                          className={`w-full text-left min-h-[50px] px-3.5 py-2.5 transition-colors cursor-pointer flex items-center justify-between gap-3 ${
-                            active
-                              ? 'bg-[var(--vermilion-tint)]'
-                              : 'hover:bg-[#1a1916]/[0.04]'
-                          }`}
-                        >
-                          <div>
-                            <span className="block text-sm font-semibold text-[var(--ink-primary)]">
-                              {preset.label}
-                            </span>
-                            <span className="block text-xs text-[var(--ink-secondary)]">
-                              {preset.description}
-                            </span>
-                          </div>
-                          <span
-                            className={`text-xs font-semibold shrink-0 ${
-                              active ? 'text-[#8e1e1a]' : 'text-[var(--ink-muted)]'
-                            }`}
-                          >
-                            {active ? '已套用' : '套用'}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+                {renderFilterAndTextControls(false)}
 
-                <div className="space-y-2.5 pt-2">
+                {/* 下一步確認按鈕 */}
+                <div className="space-y-2.5 pt-3 border-t border-[var(--hairline-border)]">
                   <button
                     type="button"
                     onClick={() => onConfirmPhoto(photoRecord)}
@@ -538,14 +1005,26 @@ export const PhotoScreen: React.FC<PhotoScreenProps> = ({
                     <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
                   </button>
 
-                  <div className="flex items-center justify-between gap-2">
-                    <button
-                      type="button"
-                      onClick={handleRetake}
-                      className="min-h-[44px] px-3 py-2 text-xs sm:text-sm font-medium text-[var(--ink-primary)] hover:text-[#8e1e1a] cursor-pointer"
-                    >
-                      重拍或更換照片
-                    </button>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleRetakeToCamera}
+                        className="min-h-[44px] px-2.5 py-2 text-xs sm:text-sm font-medium text-[var(--ink-primary)] hover:text-[#8e1e1a] cursor-pointer"
+                      >
+                        重新拍攝
+                      </button>
+                      <span aria-hidden="true" className="text-[var(--ink-muted)]">
+                        /
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleRetake}
+                        className="min-h-[44px] px-2.5 py-2 text-xs sm:text-sm font-medium text-[var(--ink-primary)] hover:text-[#8e1e1a] cursor-pointer"
+                      >
+                        更換照片
+                      </button>
+                    </div>
                     <button
                       type="button"
                       onClick={handleSkipStep}

@@ -28,21 +28,47 @@ export type OptionKey = 'A' | 'B' | 'C' | 'D' | 'E';
 /** 人權反思頁選項（不計分、不判定立場） */
 export type ReflectionChoice = 'yes' | 'no' | 'rethink';
 
-/** 照片濾鏡預設樣式（支援無濾鏡原圖與本機復古顯影濾鏡） */
+/** 照片濾鏡預設樣式（兼顧歷史復古質感與現代年輕人喜愛的底片／CCD／印刷風格） */
 export type PhotoFilterPreset =
   | 'none'
+  | 'ccd_2000'
+  | 'kodak_film'
+  | 'polaroid_fade'
+  | 'newspaper_halftone'
   | 'classic_bw'
   | 'aged_sepia_bw'
-  | 'high_grain_archive';
+  | 'crimson_darkroom';
+
+/** 照片語句擺放位置 */
+export type PhotoCaptionPlacement =
+  | 'none'
+  | 'above_head'
+  | 'bottom_text'
+  | 'border_top_bottom';
+
+/** 照片語句／邊框配色風格 */
+export type PhotoCaptionColorStyle = 'vermilion' | 'ink_tape' | 'paper_stamp';
+
+/** 照片邊框與頭頂標語設定 */
+export interface PhotoOverlayConfig {
+  /** 顯示的語句文字（例如「我是政治犯」、「我有罪」或自訂短語，空字串代表無語句） */
+  text: string;
+  /** 擺放位置或邊框樣式 */
+  placement: PhotoCaptionPlacement;
+  /** 標語與邊框配色 */
+  colorStyle: PhotoCaptionColorStyle;
+}
 
 /** 玩家本機檔案存照資料（僅存於瀏覽器記憶體，不上傳伺服器） */
 export interface PhotoRecord {
-  /** 經裁切與尺寸最佳化後的原始影像 DataURL，用於即時切換不同舊照濾鏡 */
+  /** 經裁切與尺寸最佳化後的原始影像 DataURL，用於即時切換不同濾鏡與邊框 */
   originalDataUrl: string;
-  /** 套用黑白、顆粒與舊照片效果後的最終影像 DataURL */
+  /** 套用濾鏡與邊框／語句效果後的最終影像 DataURL */
   processedDataUrl: string;
-  /** 目前選用的舊照片濾鏡預設 */
+  /** 目前選用的照片濾鏡預設 */
   preset: PhotoFilterPreset;
+  /** 目前選用的邊框／頭上語句設定 */
+  overlay?: PhotoOverlayConfig;
   /** 影像來源：裝置鏡頭拍攝或本機檔案上傳 */
   source: 'camera' | 'upload';
 }

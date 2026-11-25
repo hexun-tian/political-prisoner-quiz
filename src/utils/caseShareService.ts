@@ -22,12 +22,19 @@ const VALID_IDENTITY_IDS = new Set<IdentityId>([
   'acquitted',
 ]);
 
-const VALID_PRESETS = new Set<PhotoFilterPreset>([
+const FIRESTORE_SAFE_PRESETS = new Set<string>([
   'none',
   'classic_bw',
   'aged_sepia_bw',
   'high_grain_archive',
 ]);
+
+function toFirestoreSafePreset(preset: PhotoFilterPreset): string {
+  if (FIRESTORE_SAFE_PRESETS.has(preset)) {
+    return preset;
+  }
+  return 'classic_bw';
+}
 
 export interface CreatedCaseShare {
   shareToken: string;
@@ -116,7 +123,10 @@ export async function createTemporaryCaseShare(params: {
     throw new Error('案件身分代碼異常，無法建立暫存連結');
   }
 
-  const cacheKey = `${caseNumber}|${profile.id}|${photoRecord?.preset ?? ''}|${photoRecord?.processedDataUrl?.slice(-32) ?? ''}`;
+  const overlaySig = photoRecord?.overlay
+    ? `${photoRecord.overlay.placement}:${photoRecord.overlay.colorStyle}:${photoRecord.overlay.text}`
+    : '';
+  const cacheKey = `${caseNumber}|${profile.id}|${photoRecord?.preset ?? ''}|${overlaySig}|${photoRecord?.processedDataUrl?.slice(-32) ?? ''}`;
   const existingPromise = sessionShareCache.get(cacheKey);
   if (existingPromise) {
     return existingPromise;
@@ -138,7 +148,7 @@ export async function createTemporaryCaseShare(params: {
       const compressedPhoto = await compressPortraitForShare(photoRecord.processedDataUrl);
       if (compressedPhoto) {
         payload.photoDataUrl = compressedPhoto;
-        payload.photoPreset = VALID_PRESETS.has(photoRecord.preset) ? photoRecord.preset : 'none';
+        payload.photoPreset = toFirestoreSafePreset(photoRecord.preset);
       }
     }
 
@@ -201,9 +211,13 @@ export async function fetchSharedCaseFile(
 
     let photoRecord: PhotoRecord | null = null;
     if (typeof data.photoDataUrl === 'string' && data.photoDataUrl.startsWith('data:image/')) {
-      const preset = VALID_PRESETS.has(data.photoPreset as PhotoFilterPreset)
-        ? (data.photoPreset as PhotoFilterPreset)
-        : 'none';
+      const rawPreset = typeof data.photoPreset === 'string' ? data.photoPreset : 'none';
+      const preset: PhotoFilterPreset =
+        rawPreset === 'aged_sepia_bw'
+          ? 'aged_sepia_bw'
+          : rawPreset === 'classic_bw'
+            ? 'classic_bw'
+            : 'none';
       photoRecord = {
         originalDataUrl: data.photoDataUrl,
         processedDataUrl: data.photoDataUrl,
